@@ -57,6 +57,18 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define temp_adc_in_Pin GPIO_PIN_1
+#define temp_adc_in_GPIO_Port GPIOA
+#define xtilt_pwm_in_Pin GPIO_PIN_3
+#define xtilt_pwm_in_GPIO_Port GPIOA
+#define ytilt_pwm_in_Pin GPIO_PIN_4
+#define ytilt_pwm_in_GPIO_Port GPIOA
+#define led_r_Pin GPIO_PIN_0
+#define led_r_GPIO_Port GPIOB
+#define led_g_Pin GPIO_PIN_1
+#define led_g_GPIO_Port GPIOB
+#define led_b_Pin GPIO_PIN_2
+#define led_b_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
