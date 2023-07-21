@@ -55,19 +55,26 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityHigh,
 };
 /* Definitions for displayTask */
 osThreadId_t displayTaskHandle;
 const osThreadAttr_t displayTask_attributes = {
   .name = "displayTask",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityBelowNormal,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for accelTask */
 osThreadId_t accelTaskHandle;
 const osThreadAttr_t accelTask_attributes = {
   .name = "accelTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityBelowNormal,
+};
+/* Definitions for consoleTask */
+osThreadId_t consoleTaskHandle;
+const osThreadAttr_t consoleTask_attributes = {
+  .name = "consoleTask",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
 };
@@ -91,6 +98,7 @@ static void MX_TIM1_Init(void);
 void StartDefaultTask(void *argument);
 void StartDisplayTask(void *argument);
 void StartAccelTask(void *argument);
+void StartConsoleTask(void *argument);
 void Callback01(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -139,6 +147,7 @@ int main(void)
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
   displayTaskHandle = osThreadNew(StartDisplayTask, NULL, &displayTask_attributes);
   accelTaskHandle = osThreadNew(StartAccelTask, NULL, &accelTask_attributes);
+  consoleTaskHandle = osThreadNew(StartConsoleTask, NULL, &consoleTask_attributes);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -362,6 +371,8 @@ static void MX_TIM1_Init(void)
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
 
   /* USER CODE BEGIN TIM1_Init 1 */
 
@@ -372,7 +383,7 @@ static void MX_TIM1_Init(void)
   htim1.Init.Period = 65535;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
   {
     Error_Handler();
@@ -382,15 +393,42 @@ static void MX_TIM1_Init(void)
   {
     Error_Handler();
   }
+  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE BEGIN TIM1_Init 2 */
 
   /* USER CODE END TIM1_Init 2 */
+  HAL_TIM_MspPostInit(&htim1);
 
 }
 
@@ -410,11 +448,11 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 9600;
+  huart1.Init.BaudRate = 115200;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
-  huart1.Init.Mode = UART_MODE_RX;
+  huart1.Init.Mode = UART_MODE_TX_RX;
   huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
   huart1.Init.OverSampling = UART_OVERSAMPLING_16;
   if (HAL_UART_Init(&huart1) != HAL_OK)
@@ -511,19 +549,81 @@ void StartDisplayTask(void *argument)
 * @retval None
 */
 /* USER CODE END Header_StartAccelTask */
-volatile uint16_t tempRead[2] = {0};
 void StartAccelTask(void *argument)
 {
-	/* USER CODE BEGIN StartAccelTask */
+  /* USER CODE BEGIN StartAccelTask */
+	uint32_t tempValues[100] = {0};
 	/* Infinite loop */
 	for(;;)
 	{
 		osDelay(1);
-		HAL_ADC_Start_DMA(&hadc1, (uint32_t *) tempRead, 2);
-		osDelay(500);
+		HAL_ADC_Start(&hadc1);
+		osDelay(1);
+		HAL_ADC_PollForConversion(&hadc1, 1);
+		osDelay(1);
+		tempValues[0] = HAL_ADC_GetValue(&hadc1);
+		osDelay(1);
 		HAL_ADC_Stop(&hadc1);
 	}
-	/* USER CODE END StartAccelTask */
+  /* USER CODE END StartAccelTask */
+}
+
+/* USER CODE BEGIN Header_StartConsoleTask */
+/**
+* @brief Function implementing the consoleTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartConsoleTask */
+void StartConsoleTask(void *argument)
+{
+  /* USER CODE BEGIN StartConsoleTask */
+	// can use the msp ascii shifting checker to lowercase stuff
+	uint32_t buffer_size = 100;
+	uint8_t uart_buffer[buffer_size];
+	uint8_t uart_char[1];
+	uint8_t header[] = "--------------------\r\nRobotics Platform CLI\r\n--------------------\n\n";
+	uint8_t prompt[] = "\rEnter command: ";
+	uint8_t warning[] = "Invalid command.\n";
+	uint8_t i = 0;
+	void clear_buffers(){
+		uart_char[0] = 0x00;
+		for(uint8_t j=0; j<=sizeof(uart_buffer); j++){
+			uart_buffer[j] = 0x00;
+		}
+	}
+	clear_buffers();
+	HAL_UART_Transmit(&huart1, header, sizeof(header), 500);
+	HAL_UART_Transmit(&huart1, prompt, sizeof(prompt), 500);
+	/* Infinite loop */
+	for(;;)
+	{
+		HAL_UART_Receive(&huart1, uart_char, 1, 500);
+		uart_buffer[i] = uart_char[0];
+		osDelay(10);
+		if((uart_buffer[i] == '\r' && sizeof(uart_buffer)>1) || i == sizeof(uart_buffer)-2){
+			//for(uint8_t j=0; j<sizeof(uart_buffer); j++){
+				//if(*uart_buffer == 'echo\r'){
+				//	uart_buffer[i+1] = '\n';
+				//	HAL_UART_Transmit(&huart1, uart_buffer, sizeof(uart_buffer), 500);
+				//	uart_buffer[i+1] = '\n';
+				//	uart_buffer[i+2] = '\r';
+				//	HAL_UART_Transmit(&huart1, uart_buffer, sizeof(uart_buffer), 500);
+				//}
+				//else{
+					uart_buffer[i+1] = '\n';
+					uart_buffer[i+2] = '\r';
+					HAL_UART_Transmit(&huart1, uart_buffer, sizeof(uart_buffer), 500);
+					HAL_UART_Transmit(&huart1, warning, sizeof(warning), 500);
+				//}
+				clear_buffers();
+				i = 0;
+				HAL_UART_Transmit(&huart1, prompt, sizeof(prompt), 500);
+		}
+		i++;
+		osDelay(10);
+	}
+  /* USER CODE END StartConsoleTask */
 }
 
 /* Callback01 function */
