@@ -582,7 +582,7 @@ void StartConsoleTask(void *argument)
 		}
 	}
 	void print(unsigned char *input){
-		HAL_UART_Transmit(&huart1, input, sizeof(input), 500);
+		HAL_UART_Transmit(&huart1, input, strlen(input), 500);
 	}
 	void println(unsigned char input[]){
 		print("\n\r");
@@ -598,15 +598,18 @@ void StartConsoleTask(void *argument)
 		if(uart_char >= ' ' && uart_char <= '~'){
 			uart_buffer[i] = uart_char;
 			print(&uart_buffer[i]);
-			//if((uart_buffer[i] == '\r' && sizeof(uart_buffer)>1) || i == sizeof(uart_buffer)-2){
 			uart_char = 0x00;
 			i++;
 		}
 		else if(uart_char == '\r'){
 			switch(lower(uart_buffer[0])){
 				case 'h':
-					println("test");
+					println("-h: Display this help menu.\
+							 -p [pin #] [duty %] [period]: Toggle PWM for a pin.\
+							 -? []: ???");
 					break;
+				case 'p':
+					println("PWM ON");
 				default:
 					println(warning);
 			}
