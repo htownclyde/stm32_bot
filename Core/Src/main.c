@@ -22,7 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -40,13 +40,12 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-ADC_HandleTypeDef hadc1;
-
 I2C_HandleTypeDef hi2c1;
 
 SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart1;
 
@@ -91,10 +90,10 @@ const osTimerAttr_t Timer01_attributes = {
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
-static void MX_ADC1_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM1_Init(void);
+static void MX_TIM2_Init(void);
 void StartDefaultTask(void *argument);
 void StartDisplayTask(void *argument);
 void StartAccelTask(void *argument);
@@ -139,10 +138,10 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART1_UART_Init();
-  MX_ADC1_Init();
   MX_I2C1_Init();
   MX_SPI1_Init();
   MX_TIM1_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
   displayTaskHandle = osThreadNew(StartDisplayTask, NULL, &displayTask_attributes);
@@ -231,58 +230,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-}
-
-/**
-  * @brief ADC1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_ADC1_Init(void)
-{
-
-  /* USER CODE BEGIN ADC1_Init 0 */
-
-  /* USER CODE END ADC1_Init 0 */
-
-  ADC_ChannelConfTypeDef sConfig = {0};
-
-  /* USER CODE BEGIN ADC1_Init 1 */
-
-  /* USER CODE END ADC1_Init 1 */
-
-  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
-  */
-  hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
-  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc1.Init.ScanConvMode = DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
-  hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-  if (HAL_ADC_Init(&hadc1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
-  */
-  sConfig.Channel = ADC_CHANNEL_1;
-  sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN ADC1_Init 2 */
-
-  /* USER CODE END ADC1_Init 2 */
-
 }
 
 /**
@@ -404,6 +351,74 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 1600;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4);
+  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
+  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
+  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0);
+  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, 0);
+  /* USER CODE END TIM2_Init 2 */
+  HAL_TIM_MspPostInit(&htim2);
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -452,20 +467,14 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, led_r_Pin|led_g_Pin|led_b_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, LED_G_Pin|LED_R_Pin|LED_B_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : led_r_Pin led_g_Pin led_b_Pin */
-  GPIO_InitStruct.Pin = led_r_Pin|led_g_Pin|led_b_Pin;
+  /*Configure GPIO pins : LED_G_Pin LED_R_Pin LED_B_Pin */
+  GPIO_InitStruct.Pin = LED_G_Pin|LED_R_Pin|LED_B_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : xtilt_pwm_in_Pin ytilt_pwm_in_Pin */
-  GPIO_InitStruct.Pin = xtilt_pwm_in_Pin|ytilt_pwm_in_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : UNNAMEDINT_Pin */
   GPIO_InitStruct.Pin = UNNAMEDINT_Pin;
@@ -515,11 +524,11 @@ void StartDisplayTask(void *argument)
   for(;;)
   {
 	  osDelay(100);
-	  HAL_GPIO_TogglePin(GPIOB, led_r_Pin);
+	  HAL_GPIO_TogglePin(GPIOB, LED_R_Pin);
 	  osDelay(100);
-	  HAL_GPIO_TogglePin(GPIOB, led_g_Pin);
+	  HAL_GPIO_TogglePin(GPIOB, LED_G_Pin);
 	  osDelay(100);
-	  HAL_GPIO_TogglePin(GPIOB, led_b_Pin);
+	  HAL_GPIO_TogglePin(GPIOB, LED_B_Pin);
 	  osDelay(100);
   }
   /* USER CODE END StartDisplayTask */
@@ -540,13 +549,13 @@ void StartAccelTask(void *argument)
 	for(;;)
 	{
 		osDelay(1);
-		HAL_ADC_Start(&hadc1);
+		//HAL_ADC_Start(&hadc1);
 		osDelay(1);
-		HAL_ADC_PollForConversion(&hadc1, 1);
+		//HAL_ADC_PollForConversion(&hadc1, 1);
 		osDelay(1);
-		tempValues[0] = HAL_ADC_GetValue(&hadc1);
+		//tempValues[0] = HAL_ADC_GetValue(&hadc1);
 		osDelay(1);
-		HAL_ADC_Stop(&hadc1);
+		//HAL_ADC_Stop(&hadc1);
 	}
   /* USER CODE END StartAccelTask */
 }
@@ -564,11 +573,15 @@ void StartConsoleTask(void *argument)
 	// can use the msp ascii shifting checker to lowercase stuff
 	uint32_t buffer_size = 100;
 	uint32_t i = 0;
+	uint32_t j = 0;
+	uint32_t duty_cycle = 0;
 	unsigned char uart_buffer[buffer_size];
 	unsigned char uart_char;
 	unsigned char header[] = "---------------------\r\nRobotics Platform CLI\r\n---------------------\n";
 	unsigned char prompt[] = "> ";
 	unsigned char warning[] = "Invalid command.";
+	unsigned char *command[10];
+	unsigned char *direction;
 	char lower(char input){
 		if(input >= 'A' && input <= 'Z'){
 			input = input + 32;
@@ -581,10 +594,10 @@ void StartConsoleTask(void *argument)
 			uart_buffer[j] = 0x00;
 		}
 	}
-	void print(unsigned char *input){
-		HAL_UART_Transmit(&huart1, input, strlen(input), 500);
+	void print(unsigned char * input){
+		HAL_UART_Transmit(&huart1, (unsigned char *) input, strlen(input), 500);
 	}
-	void println(unsigned char input[]){
+	void println(char input[]){
 		print("\n\r");
 		print(input);
 	}
@@ -593,15 +606,24 @@ void StartConsoleTask(void *argument)
 	println(prompt);
 	/* Infinite loop */
 	while(1){
+		clear_buffers();
 		osDelay(10);
 		HAL_UART_Receive(&huart1, &uart_char, 1, 500);
-		if(uart_char >= ' ' && uart_char <= '~'){
+		if(uart_char >= ' ' && uart_char <= '~' && i < sizeof(uart_buffer)){
 			uart_buffer[i] = uart_char;
 			print(&uart_buffer[i]);
 			uart_char = 0x00;
 			i++;
 		}
 		else if(uart_char == '\r'){
+			command[0] = strtok(uart_buffer, " ");
+			println(command[0]);
+			j = 1;
+			while(command[j] != NULL && j <= 10){
+				command[j] = strtok(NULL, " ");
+				println(command[j]);
+				j++;
+			}
 			switch(lower(uart_buffer[0])){
 				case 'h':
 					println("-h: Display this help menu.\
@@ -609,7 +631,22 @@ void StartConsoleTask(void *argument)
 							 -? []: ???");
 					break;
 				case 'p':
-					println("PWM ON");
+					duty_cycle = atoi(command[1]);
+					direction = command[2];
+					if(duty_cycle > 100){
+						duty_cycle = 100;
+					}
+					if(direction = "CCW"){
+						println("PWM ON: CCW");
+						__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty_cycle*16);
+						__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
+					}
+					else{
+						println("PWM ON: CW");
+						__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
+						__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, duty_cycle*16);
+					}
+					break;
 				default:
 					println(warning);
 			}
